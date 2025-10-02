@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+<title>Trung Thu — Mở khóa & Pháo hoa (p5)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+<style>
+  :root{ --ink:#e8f1ff; }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:radial-gradient(1400px 900px at 70% -10%, #142449 10%, #0b1226 50%, #050812 100%); font-family:ui-rounded, system-ui, -apple-system, "SF Pro Display", "Segoe UI", Roboto, Arial; color:#fff;}
+  /* p5 canvas ABOVE text so fireworks cover the headline */
+  #defaultCanvas0{position:fixed !important; inset:0 !important; width:100vw !important; height:100vh !important; z-index:4 !important;}
+  /* Center slider */
+  .locker{position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); width:min(680px,88vw); z-index:5;}
+  .track{position:relative; width:100%; height:72px; background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03)); border:1px solid rgba(255,255,255,.18); border-radius:999px; box-shadow:inset 0 12px 28px rgba(0,0,0,.45), 0 14px 28px rgba(40,120,255,.08); overflow:hidden}
+  .marquee{position:absolute; inset:0; display:grid; place-items:center; pointer-events:none; font-weight:800; letter-spacing:.3px; color:#d8e6ffcc; mask-image:linear-gradient(90deg, transparent, black 12%, black 88%, transparent); -webkit-mask-image:linear-gradient(90deg, transparent, black 12%, black 88%, transparent)}
+  .marquee span{display:inline-block; white-space:nowrap; animation:scroll 6s linear infinite}
+  @keyframes scroll{from{transform:translateX(20%)} to{transform:translateX(-20%)}}
+  .handle{position:absolute; top:6px; left:6px; width:60px; height:60px; border-radius:999px; background:linear-gradient(135deg,#7fb0ff,#5a8dff); display:grid; place-items:center; box-shadow:0 10px 24px rgba(90,141,255,.55), inset 0 -6px 12px rgba(0,0,0,.25); touch-action:none; user-select:none; -webkit-user-select:none}
+  .handle::after{content:"›"; font-size:30px; transform:translateX(2px); font-weight:900; color:#0a1533}
+  /* Greeting text (CENTERED, below fireworks) */
+  .reveal{position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); text-align:center; pointer-events:none; opacity:0; z-index:3}
+  .reveal h2{
+    margin:0; font-size:clamp(32px,7vw,72px); font-weight:900; letter-spacing:.4px; color:#fff;
+    -webkit-text-stroke:1px rgba(255,255,255,.7);
+    text-shadow: 0 1px 0 rgba(255,255,255,.25), 0 4px 10px rgba(255,255,255,.22), 0 12px 26px rgba(20,120,255,.22);
+  }
+  .reveal .sub{margin-top:12px; font-size:clamp(13px,2.2vw,18px); color:var(--ink); opacity:.9; text-shadow:0 2px 8px rgba(0,0,0,.35)}
+  .reveal.show{animation:fadeIn 1.1s ease-out forwards}
+  @keyframes fadeIn{from{opacity:0; transform:translate(-50%,-46%)} to{opacity:1; transform:translate(-50%,-50%)}}
+</style>
+</head>
+<body>
+  <!-- Slide to unlock -->
+  <div class="locker" id="locker">
+    <div class="track" id="track">
+      <div class="marquee"><span>⟵ Kéo sang phải để mở khóa • Slide to unlock • Vuốt sang phải để bắt đầu pháo hoa ✨</span></div>
+      <div class="handle" id="handle" aria-label="slide to unlock"></div>
+    </div>
+  </div>
+
+  <!-- Centered greeting -->
+  <div class="reveal" id="reveal">
+    <h2>Chúc Mừng Trung Thu</h2>
+    <div class="sub">Chạm/nhấp để tạo thêm pháo hoa</div>
+  </div>
+
+<script>
+/* ===== Slider unlock ===== */
+(function(){
+  const track = document.getElementById('track');
+  const handle = document.getElementById('handle');
+  const locker = document.getElementById('locker');
+  const reveal = document.getElementById('reveal');
+  let dragging=false,startX=0,pos=6,max=0;
+  function measure(){ max=track.clientWidth-handle.offsetWidth-6; handle.style.left='6px'; }
+  window.addEventListener('resize', measure); setTimeout(measure,0);
+  function setLeft(x){ pos=Math.max(6,Math.min(x,max)); handle.style.left=pos+'px'; }
+  function unlock(){ locker.style.pointerEvents='none'; locker.style.transition='opacity .35s ease'; locker.style.opacity='0'; setTimeout(()=>locker.remove(),400); setTimeout(()=>reveal.classList.add('show'), 1000); window.FW_START?.(); }
+  function onDown(e){ dragging=true; startX=(e.touches?e.touches[0].clientX:e.clientX)-handle.getBoundingClientRect().left; e.preventDefault(); }
+  function onMove(e){ if(!dragging)return; const x=(e.touches?e.touches[0].clientX:e.clientX)-track.getBoundingClientRect().left-startX; setLeft(x); e.preventDefault(); }
+  function onUp(){ if(!dragging)return; dragging=false; if(pos>=max-6) unlock(); else setLeft(6); }
+  handle.addEventListener('mousedown',onDown); handle.addEventListener('touchstart',onDown,{passive:false});
+  window.addEventListener('mousemove',onMove,{passive:false}); window.addEventListener('touchmove',onMove,{passive:false});
+  window.addEventListener('mouseup',onUp); window.addEventListener('touchend',onUp);
+})();
+
+/* ===== p5.js fireworks (High & Guaranteed) ===== */
+let fireworks=[], gravity, unlocked=false, AUTO_CHANCE=0.012;
+function setup(){ createCanvas(windowWidth, windowHeight); gravity=createVector(0,0.04); stroke(255); strokeWeight(3); background(0,0,0,255); }
+function windowResized(){ resizeCanvas(windowWidth, windowHeight); }
+function draw(){
+  if(!unlocked) return;
+  colorMode(RGB); background(0,0,0,25);
+  if(random() < AUTO_CHANCE){ fireworks.push(new Firework()); }
+  for(let i=fireworks.length-1;i>=0;i--){
+    fireworks[i].update(); fireworks[i].show();
+    if(fireworks[i].done()) fireworks.splice(i,1);
+  }
+}
+class Firework{
+  constructor(){
+    this.hu=random(255);
+    this.firework=new Particle(random(width*0.15,width*0.85), height, this.hu, true);
+    this.exploded=false; this.particles=[];
+    this.startTime = millis(); // safety timer
+  }
+  done(){ return this.exploded && this.particles.length===0; }
+  update(){
+    if(!this.exploded){
+      this.firework.applyForce(gravity);
+      this.firework.update();
+      const reachedTop = this.firework.pos.y < height*0.15;  // top 15%
+      const apex = this.firework.vel.y >= 0;
+      const tooLong = (millis() - this.startTime) > 9000; // 9s
+      if(reachedTop || apex || tooLong){
+        this.exploded=true; this.explode();
+      }
+    }
+    for(let i=this.particles.length-1;i>=0;i--){
+      this.particles[i].applyForce(gravity); this.particles[i].update();
+      if(this.particles[i].done()) this.particles.splice(i,1);
+    }
+  }
+  explode(){
+    for(let i=0;i<140;i++){ this.particles.push(new Particle(this.firework.pos.x, this.firework.pos.y, this.hu, false)); }
+  }
+  show(){ if(!this.exploded) this.firework.show(); for(const p of this.particles) p.show(); }
+}
+class Particle{
+  constructor(x,y,hu,firework){
+    this.pos=createVector(x,y);
+    this.firework=firework; this.lifespan=255; this.hu=hu; this.acc=createVector(0,0);
+    if(this.firework){
+      this.vel=createVector(0, random(-8.5,-7.0));
+    }else{
+      this.vel=p5.Vector.random2D().mult(random(1.6,5.2));
+    }
+  }
+  applyForce(f){ this.acc.add(f); }
+  update(){ if(!this.firework){ this.vel.mult(0.92); this.lifespan-=3; } this.vel.add(this.acc); this.pos.add(this.vel); this.acc.mult(0); }
+  done(){ return this.lifespan<0; }
+  show(){ colorMode(HSB); if(!this.firework) stroke(this.hu,255,255,this.lifespan/255); else stroke(this.hu,255,255); point(this.pos.x,this.pos.y); }
+}
+function mousePressed(){ if(!unlocked) return; fireworks.push(new FireworkImmediate(mouseX,mouseY)); }
+class FireworkImmediate{ constructor(x,y){ this.exploded=true; this.particles=[]; this.hu=random(255); for(let i=0;i<140;i++){ this.particles.push(new Particle(x,y,this.hu,false)); } }
+  done(){ return this.particles.length===0; }
+  update(){ for(let i=this.particles.length-1;i>=0;i--){ this.particles[i].applyForce(gravity); this.particles[i].update(); if(this.particles[i].done()) this.particles.splice(i,1); } }
+  show(){ for(const p of this.particles) p.show(); } }
+window.FW_START = ()=>{ unlocked=true; };
+</script>
+</body>
+</html>
